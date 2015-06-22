@@ -1,25 +1,193 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Peer Assessment 1"
+author: "Nahil A. Sobh"
+date: "Sunday, June 21, 2015"
+output: html_document
 ---
+Loading and preprocessing the data:
+===================================
+Code that is needed to Load the data and transform the date to date format
 
+```{r, echo=TRUE}
+activity      <- read.csv(file = "./activity.csv")
+activity$date <- as.Date(activity$date)
+```
 
-## Loading and preprocessing the data
+The following R script is used to add a column that index the days
 
+```{r, echo=TRUE}
+initial_date <- activity$date[1]
+days_index   <- 1:length(activity$date)
+count<- 1
+for(i in 2:length(activity$date)){
+      current_date <- activity$date[i]
+      if( current_date == initial_date){
+          days_index[i] <- count 
+      } else {
+          count<- count + 1 
+          initial_date  <- current_date
+          days_index[i] <- count
+     }
+}
+```
 
+The mean total number of steps taken per day calculations:
+==========================================================
 
-## What is mean total number of steps taken per day?
+1. Now the days_index is used to aggregate the number of steps to calculate the total number of steps taken per day:
 
+```{r, echo=TRUE}
+act<-cbind(activity,days_index)
+sum_steps_per_day <- aggregate(act$steps, list(act$days_index), sum)
+```
 
+2. The histogram of the total number of steps taken each day **(Note: the columns have been renamed)**
+```{r, echo=TRUE}
+colnames(sum_steps_per_day)[1]<- "day"
+colnames(sum_steps_per_day)[2]<- "sum"
+hist(sum_steps_per_day$sum,main = "Sum Histogram")
+```
 
-## What is the average daily activity pattern?
+3. Plots for mean and median of the total number of steps taken per day
 
+```{r, echo=TRUE}
+mean_steps_per_day <-aggregate(act$steps, list(act$days_index), mean)
+colnames(mean_steps_per_day)[1]<- "day"
+colnames(mean_steps_per_day)[2]<- "mean"
+hist(mean_steps_per_day$mean,main = "Mean Histogram")
+```
 
+**Note the median per day for all days is zero!**
 
-## Imputing missing values
+```{r, echo=TRUE}
+median_steps_per_day <- aggregate(act$steps, list(act$days_index), median)
+colnames(median_steps_per_day)[1]<- "day"
+colnames(median_steps_per_day)[2]<- "median"
+hist(median_steps_per_day$median,main = "Median Histogram")
+```
 
+The average daily activity pattern:
+===================================
+1. Time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+activity_na_removed<- activity[!is.na(activity$steps),]
+steps_per_minute<- aggregate(activity_na_removed$steps, list(activity_na_removed$interval), mean)
+colnames(steps_per_minute)[1]<-"minutes"
+colnames(steps_per_minute)[2]<-"mean"
+plot(steps_per_minute)
+```
 
+2. The 104th 5-minute interval contains the maximum number 206  steps averaged over days.
+```{r, echo=TRUE}
+which.max( steps_per_minute[,2] )
+max( steps_per_minute[,2] )
+```
 
-## Are there differences in activity patterns between weekdays and weekends?
+Imputing missing values:
+========================
+1. The total number of missing values in the dataset are 2304 as shown below:
+
+```{r, echo=TRUE}
+sum(is.na(activity$steps))
+```
+
+2. All of the missing values in the dataset are replaced b the mean for all days or the mean as follows
+```{r,echo=TRUE}
+overall_mean <- mean(activity$steps,na.rm=TRUE)
+```
+
+3.A new dataset *activity_complete*  is equal to the original dataset *activity* but with the missing data filled in with the mean calculated in step 2.
+```{r,echo=TRUE}
+overall_mean <- mean(activity$steps,na.rm=TRUE)
+activity_complete<- act
+for(i in 1:length(activity_complete$steps)){
+  if( is.na(activity_complete$steps[i])){
+    activity_complete$steps[i]<- overall_mean
+    }
+}
+```
+
+4.1 A histogram of the total number of steps taken each day
+```{r,echo=TRUE}
+sum_complete_steps_per_day <- aggregate(activity_complete$steps, list(activity_complete$days_index), sum)
+colnames(sum_complete_steps_per_day)[1]<- "day"
+colnames(sum_complete_steps_per_day)[2]<- "sum"
+hist(sum_complete_steps_per_day$sum,main = "Sum Histogram (Imputed data)")
+```
+
+4.2 A histogam of the mean  total number of steps taken per day.
+```{r,echo=TRUE}
+mean_complete_steps_per_day <- aggregate(activity_complete$steps, list(activity_complete$days_index), mean)
+colnames(mean_complete_steps_per_day)[1]<- "day"
+colnames(mean_complete_steps_per_day)[2]<- "mean"
+hist(mean_complete_steps_per_day$mean,main = "mean Histogram (Imputed data)")
+```
+
+4.2 A histogam of the median  total number of steps taken per day.
+```{r,echo=TRUE}
+median_complete_steps_per_day <- aggregate(activity_complete$steps, list(activity_complete$days_index), median)
+colnames(median_complete_steps_per_day)[1]<- "day"
+colnames(median_complete_steps_per_day)[2]<- "median"
+hist(median_complete_steps_per_day$median,main = "mode Histogram (Imputed data)")
+```
+
+4.3 The imputed and original datasets' sum and mean are  similar in shapes but differ in frequency values at the middle range. Thde median is different between the two datasets as show below:  
+
+**The sum** similar shapes
+```{r,echo=TRUE}
+par(mfrow=c(1,2))
+hist(sum_steps_per_day$sum,main = "Sum Histogram")
+hist(sum_complete_steps_per_day$sum,main = "Sum Histogram (Imputed data)")
+```
+
+**The mean** similar shapes
+```{r,echo=TRUE}
+par(mfrow=c(1,2))
+hist(mean_steps_per_day$mean,main = "Mean Histogram")
+hist(mean_complete_steps_per_day$mean,main = "Mean Histogram (Imputed data)")
+```
+
+**The median** different
+```{r,echo=TRUE}
+par(mfrow=c(1,2))
+hist(median_steps_per_day$median,main = "Median Histogram")
+hist(median_complete_steps_per_day$median,main = "Median Histogram (Imputed data)")
+```
+
+The imputed data tend to differ in the median but tend to have larger values toward the middle of the histograms. 
+
+Differences in activity patterns between weekdays and weekends:
+===============================================================
+1. Created a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r, echo=TRUE}
+weekday <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+index   <- weekdays( activity_complete$date ) %in% weekday
+
+weekday_index<- as.character(1:length(index))
+
+for( i in 1:length(index)){
+  if( index[i] == TRUE){
+      weekday_index[i] <- "weekday"
+  } else {
+      weekday_index[i] <- "weekend"
+  }
+}
+weekday_index<- as.factor(weekday_index)
+activity_complete<- cbind(activity_complete,weekday_index)
+```
+
+2. Panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+```{r,echo=TRUE}
+mean_steps_per_weekday_weekend <- aggregate(activity_complete$steps, list(activity_complete$interval, activity_complete$weekday_index), mean)
+
+# rename colu]mns
+colnames(mean_steps_per_weekday_weekend)[1]<- "interval"
+colnames(mean_steps_per_weekday_weekend)[2]<- "day"
+colnames(mean_steps_per_weekday_weekend)[3]<- "mean"
+# kernel density plots by factor level (alternate layout) 
+attach(mean_steps_per_weekday_weekend)
+library(lattice)
+xyplot(interval~mean|day, main=" interval vs mean steps", xlab="interval", ylab="mean",layout=c(1,2))
+```
